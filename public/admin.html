@@ -32,18 +32,27 @@
   <div id="admin-panel" style="display:none;">
     <header>
       <a href="/" class="site-title">Ava Blavatnik</a>
-      <nav>
-        <span class="nav-label">Admin Panel</span>
-        <button class="nav-link logout-btn" id="logout-btn">Log Out</button>
+      <nav class="admin-nav">
+        <button type="button" class="nav-link admin-section-link active" id="nav-galleries">Admin Panel</button>
+        <button type="button" class="nav-link admin-section-link" id="nav-about">About</button>
+        <button type="button" class="nav-link logout-btn" id="logout-btn">Log Out</button>
       </nav>
     </header>
 
     <main>
-      <div class="admin-tabs">
-        <button class="tab active" data-category="black-and-white">Black and White</button>
-        <button class="tab" data-category="nature">Nature</button>
-        <button class="tab" data-category="abstract">Abstract</button>
-      </div>
+      <div id="gallery-admin-view">
+      <section class="category-manager" id="category-manager">
+        <h2>Manage Galleries</h2>
+        <p class="category-count" id="category-count"></p>
+        <form class="category-form" id="category-form">
+          <input type="text" id="new-category-name" class="text-input" placeholder="New gallery name" maxlength="60" required>
+          <button type="submit" class="add-category-btn" id="add-category-btn">Add Gallery</button>
+        </form>
+        <p class="category-status" id="category-status"></p>
+        <button type="button" class="delete-category-btn" id="delete-category-btn">Delete Current Gallery</button>
+      </section>
+
+      <div class="admin-tabs" id="admin-tabs"></div>
 
       <div class="upload-section">
         <h2>Upload Photos</h2>
@@ -77,6 +86,43 @@
         <div class="admin-gallery" id="admin-gallery"></div>
         <p class="empty-msg" id="admin-empty" style="display:none;">No photos in this category.</p>
       </div>
+      </div>
+
+      <section class="about-editor" id="about-editor" hidden>
+        <h2>About Page</h2>
+        <p class="about-editor-hint">Edit the About page content and contact links.</p>
+
+        <div class="about-portrait-editor">
+          <h3>Portrait</h3>
+          <div class="about-portrait-preview" id="about-portrait-preview">
+            <div class="portrait-placeholder"></div>
+          </div>
+          <div class="about-portrait-actions">
+            <input type="file" id="about-image-input" accept="image/*" hidden>
+            <button type="button" class="upload-btn" id="about-image-upload-btn">Upload Image</button>
+            <button type="button" class="clear-btn" id="about-image-remove-btn">Remove Image</button>
+          </div>
+          <p class="about-image-status" id="about-image-status"></p>
+        </div>
+
+        <div class="about-description-editor">
+          <h3>Description</h3>
+          <p class="field-hint">Use a blank line between paragraphs.</p>
+          <textarea id="about-description-input" class="about-textarea" rows="8" placeholder="Write about yourself…"></textarea>
+        </div>
+
+        <div class="about-contacts-editor">
+          <h3>Contact</h3>
+          <p class="field-hint">Add email, Instagram, or other links. Instagram handles can start with @.</p>
+          <div id="contact-entries"></div>
+          <button type="button" class="add-contact-btn" id="add-contact-btn">+ Add Contact</button>
+        </div>
+
+        <div class="about-save-row">
+          <button type="button" class="upload-btn" id="about-save-btn">Save About Page</button>
+          <p class="about-save-status" id="about-save-status"></p>
+        </div>
+      </section>
     </main>
   </div>
 
