@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ava Blavatnik — Photography</title>
+  <meta name="description" content="Photography portfolio of Ava Blavatnik — exploring black and white, nature, and abstract imagery.">
+  <link rel="canonical" href="/">
+  <link rel="icon" type="image/png" href="/AppIcon.png">
+  <link rel="apple-touch-icon" href="/AppIcon.png">
+
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Ava Blavatnik — Photography">
+  <meta property="og:description" content="Photography portfolio of Ava Blavatnik — exploring black and white, nature, and abstract imagery.">
+  <meta property="og:image" content="/AppIcon.png">
+  <meta property="og:url" content="/">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Ava Blavatnik — Photography">
+  <meta name="twitter:description" content="Photography portfolio of Ava Blavatnik — exploring black and white, nature, and abstract imagery.">
+  <meta name="twitter:image" content="/AppIcon.png">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "ImageGallery",
+    "name": "Ava Blavatnik Photography",
+    "description": "Photography portfolio exploring black and white, nature, and abstract imagery.",
+    "author": {
+      "@type": "Person",
+      "name": "Ava Blavatnik",
+      "jobTitle": "Photographer"
+    },
+    "image": "/AppIcon.png"
+  }
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=LTC+Bodoni+175&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+  <header>
+    <a href="/" class="site-title">Ava Blavatnik</a>
+    <nav id="nav" aria-label="Main navigation">
+      <button class="nav-link" data-category="black-and-white">Black and White</button>
+      <button class="nav-link" data-category="nature">Nature</button>
+      <button class="nav-link" data-category="abstract">Abstract</button>
+      <a href="/about" class="nav-link">About</a>
+    </nav>
+    <button class="hamburger" id="hamburger" aria-label="Toggle menu">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+
+  <main>
+    <h1 id="category-title">Black and White</h1>
+    <div class="gallery" id="gallery"></div>
+    <p class="empty-msg" id="empty-msg" style="display:none;">No photographs yet.</p>
+  </main>
+
+  <div class="lightbox" id="lightbox">
+    <button class="lightbox-close" id="lightbox-close">&times;</button>
+    <img id="lightbox-img" src="" alt="">
+    <p class="lightbox-caption" id="lightbox-caption"></p>
+  </div>
+
+  <footer>
+    <p>Ava Blavatnik</p>
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>

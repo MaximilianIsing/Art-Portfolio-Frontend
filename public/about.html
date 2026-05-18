@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>About — Ava Blavatnik Photography</title>
+  <meta name="description" content="Ava Blavatnik is a photographer whose work explores black and white, nature, and abstract imagery. Learn more about her artistic vision and process.">
+  <link rel="canonical" href="/about">
+  <link rel="icon" type="image/png" href="/AppIcon.png">
+  <link rel="apple-touch-icon" href="/AppIcon.png">
+
+  <meta property="og:type" content="profile">
+  <meta property="og:title" content="About — Ava Blavatnik Photography">
+  <meta property="og:description" content="Ava Blavatnik is a photographer exploring black and white, nature, and abstract imagery.">
+  <meta property="og:image" content="/AppIcon.png">
+  <meta property="og:url" content="/about">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="About — Ava Blavatnik Photography">
+  <meta name="twitter:description" content="Ava Blavatnik is a photographer exploring black and white, nature, and abstract imagery.">
+  <meta name="twitter:image" content="/AppIcon.png">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    "name": "Ava Blavatnik",
+    "jobTitle": "Photographer",
+    "url": "/about",
+    "image": "/AppIcon.png",
+    "description": "Photographer whose work spans black and white, nature, and abstract imagery."
+  }
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=LTC+Bodoni+175&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+  <header>
+    <a href="/" class="site-title">Ava Blavatnik</a>
+    <nav id="nav" aria-label="Main navigation">
+      <a href="/" class="nav-link">Gallery</a>
+      <a href="/about" class="nav-link active">About</a>
+    </nav>
+    <button class="hamburger" id="hamburger" aria-label="Toggle menu">
+      <span></span><span></span><span></span>
+    </button>
+  </header>
+
+  <main class="about-page">
+    <div class="about-content">
+      <div class="about-portrait">
+        <div class="portrait-placeholder"></div>
+      </div>
+      <div class="about-text">
+        <h1>About</h1>
+        <p>
+          Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.
+        </p>
+        <p>
+          Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident.
+        </p>
+        <p>
+          Sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium.
+        </p>
+
+        <div class="about-contact">
+          <h2>Contact</h2>
+          <p>
+            Lorem ipsum dolor sit amet:<br>
+            <a href="mailto:placeholder@example.com">placeholder@example.com</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <p>Ava Blavatnik</p>
+  </footer>
+
+  <script>
+    document.getElementById('hamburger').addEventListener('click', () => {
+      document.getElementById('nav').classList.toggle('open');
+    });
+  </script>
+</body>
+</html>

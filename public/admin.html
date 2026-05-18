@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — Ava Blavatnik</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" type="image/png" href="/AppIcon.png">
+  <link rel="apple-touch-icon" href="/AppIcon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=LTC+Bodoni+175&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/admin.css">
+</head>
+<body>
+
+  <!-- Login screen -->
+  <div id="login-screen" class="login-screen">
+    <div class="login-box">
+      <h1>Admin</h1>
+      <p>Enter the password to manage the gallery.</p>
+      <form id="login-form">
+        <input type="password" id="password-input" placeholder="Password" autocomplete="current-password" required>
+        <button type="submit">Enter</button>
+        <p class="error" id="login-error"></p>
+      </form>
+    </div>
+  </div>
+
+  <!-- Admin panel -->
+  <div id="admin-panel" style="display:none;">
+    <header>
+      <a href="/" class="site-title">Ava Blavatnik</a>
+      <nav>
+        <span class="nav-label">Admin Panel</span>
+        <button class="nav-link logout-btn" id="logout-btn">Log Out</button>
+      </nav>
+    </header>
+
+    <main>
+      <div class="admin-tabs">
+        <button class="tab active" data-category="black-and-white">Black and White</button>
+        <button class="tab" data-category="nature">Nature</button>
+        <button class="tab" data-category="abstract">Abstract</button>
+      </div>
+
+      <div class="upload-section">
+        <h2>Upload Photos</h2>
+        <div class="drop-zone" id="drop-zone">
+          <p>Drag &amp; drop images here, or click to select</p>
+          <p class="drop-hint">Select multiple files for bulk upload</p>
+          <input type="file" id="upload-file" accept="image/*" multiple>
+        </div>
+        <div class="file-queue" id="file-queue"></div>
+        <div class="bulk-meta" id="bulk-meta" style="display:none;">
+          <p class="bulk-hint">Set shared date/location for all photos, or edit each individually below.</p>
+          <div class="form-row">
+            <input type="text" id="bulk-date" placeholder="Date (optional)" class="text-input">
+            <input type="text" id="bulk-location" placeholder="Location (optional)" class="text-input">
+            <button type="button" class="apply-all-btn" id="apply-all-btn">Apply to All</button>
+          </div>
+        </div>
+        <div id="file-entries"></div>
+        <div class="upload-actions" id="upload-actions" style="display:none;">
+          <button type="button" class="upload-btn" id="upload-btn">Upload All</button>
+          <button type="button" class="clear-btn" id="clear-btn">Clear</button>
+        </div>
+        <p class="upload-status" id="upload-status"></p>
+        <div class="progress-bar-wrap" id="progress-wrap" style="display:none;">
+          <div class="progress-bar" id="progress-bar"></div>
+        </div>
+      </div>
+
+      <div class="existing-section">
+        <h2>Existing Photos <span class="reorder-hint">Drag to reorder</span></h2>
+        <div class="admin-gallery" id="admin-gallery"></div>
+        <p class="empty-msg" id="admin-empty" style="display:none;">No photos in this category.</p>
+      </div>
+    </main>
+  </div>
+
+  <script src="/admin.js"></script>
+</body>
+</html>
