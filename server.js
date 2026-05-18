@@ -8,11 +8,37 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 const MAX_CATEGORIES = 6;
-const UPLOADS_DIR = path.join(__dirname, 'uploads');
-const DATA_FILE = path.join(__dirname, 'data.json');
-const CATEGORIES_FILE = path.join(__dirname, 'categories.json');
-const ABOUT_FILE = path.join(__dirname, 'about.json');
+const PERSISTENT_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
+const UPLOADS_DIR = path.join(PERSISTENT_DIR, 'uploads');
+const DATA_FILE = path.join(PERSISTENT_DIR, 'data.json');
+const CATEGORIES_FILE = path.join(PERSISTENT_DIR, 'categories.json');
+const ABOUT_FILE = path.join(PERSISTENT_DIR, 'about.json');
 const ABOUT_UPLOAD_DIR = path.join(UPLOADS_DIR, 'about');
+
+function migrateLegacyStorage() {
+  fs.mkdirSync(PERSISTENT_DIR, { recursive: true });
+
+  const legacyFiles = ['data.json', 'categories.json', 'about.json'];
+  for (const file of legacyFiles) {
+    const legacyPath = path.join(__dirname, file);
+    const newPath = path.join(PERSISTENT_DIR, file);
+    if (fs.existsSync(legacyPath) && !fs.existsSync(newPath)) {
+      fs.copyFileSync(legacyPath, newPath);
+    }
+  }
+
+  const legacyUploads = path.join(__dirname, 'uploads');
+  if (fs.existsSync(legacyUploads)) {
+    fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+    for (const entry of fs.readdirSync(legacyUploads)) {
+      const from = path.join(legacyUploads, entry);
+      const to = path.join(UPLOADS_DIR, entry);
+      if (!fs.existsSync(to)) {
+        fs.cpSync(from, to, { recursive: true });
+      }
+    }
+  }
+}
 
 const DEFAULT_ABOUT = {
   description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.\n\nDuis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident.\n\nSunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium.',
@@ -126,11 +152,23 @@ function deleteCategoryImages(slug) {
   if (fs.existsSync(dir)) fs.rmSync(dir, { recursive: true, force: true });
 }
 
+migrateLegacyStorage();
 ensureUploadDirs();
 if (!fs.existsSync(DATA_FILE)) saveData(loadData());
 
 function getPassword() {
-  return fs.readFileSync(path.join(__dirname, 'password.txt'), 'utf-8').trim();
+  if (process.env.ADMIN_PASSWORD) {
+    return process.env.ADMIN_PASSWORD.trim();
+  }
+  const dataPassword = path.join(PERSISTENT_DIR, 'password.txt');
+  if (fs.existsSync(dataPassword)) {
+    return fs.readFileSync(dataPassword, 'utf-8').trim();
+  }
+  const legacyPassword = path.join(__dirname, 'password.txt');
+  if (fs.existsSync(legacyPassword)) {
+    return fs.readFileSync(legacyPassword, 'utf-8').trim();
+  }
+  throw new Error('No admin password configured. Set ADMIN_PASSWORD or create password.txt');
 }
 
 function authMiddleware(req, res, next) {
