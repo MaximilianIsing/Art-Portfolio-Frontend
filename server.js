@@ -7,20 +7,102 @@ const { v4: uuidv4 } = require('uuid');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const CATEGORIES = ['black-and-white', 'nature', 'abstract'];
+const MAX_CATEGORIES = 6;
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
 const DATA_FILE = path.join(__dirname, 'data.json');
+const CATEGORIES_FILE = path.join(__dirname, 'categories.json');
+const ABOUT_FILE = path.join(__dirname, 'about.json');
+const ABOUT_UPLOAD_DIR = path.join(UPLOADS_DIR, 'about');
 
-for (const cat of CATEGORIES) {
-  fs.mkdirSync(path.join(UPLOADS_DIR, cat), { recursive: true });
+const DEFAULT_ABOUT = {
+  description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.\n\nDuis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident.\n\nSunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium.',
+  image: null,
+  contacts: [
+    { label: 'Email', value: 'placeholder@example.com' }
+  ]
+};
+
+const DEFAULT_CATEGORIES = [
+  { slug: 'black-and-white', label: 'Black and White' },
+  { slug: 'nature', label: 'Nature' },
+  { slug: 'abstract', label: 'Abstract' }
+];
+
+function slugify(text) {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/[\s_-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function loadCategories() {
+  if (fs.existsSync(CATEGORIES_FILE)) {
+    return JSON.parse(fs.readFileSync(CATEGORIES_FILE, 'utf-8'));
+  }
+  saveCategories(DEFAULT_CATEGORIES);
+  return [...DEFAULT_CATEGORIES];
+}
+
+function saveCategories(categories) {
+  fs.writeFileSync(CATEGORIES_FILE, JSON.stringify(categories, null, 2));
+}
+
+function getCategorySlugs() {
+  return loadCategories().map(c => c.slug);
+}
+
+function categoryExists(slug) {
+  return getCategorySlugs().includes(slug);
+}
+
+function uniqueSlug(base, existingSlugs) {
+  let slug = base || 'gallery';
+  let n = 2;
+  while (existingSlugs.includes(slug)) {
+    slug = `${base}-${n++}`;
+  }
+  return slug;
+}
+
+function ensureUploadDirs() {
+  fs.mkdirSync(ABOUT_UPLOAD_DIR, { recursive: true });
+  for (const slug of getCategorySlugs()) {
+    fs.mkdirSync(path.join(UPLOADS_DIR, slug), { recursive: true });
+  }
+}
+
+function loadAbout() {
+  if (fs.existsSync(ABOUT_FILE)) {
+    return JSON.parse(fs.readFileSync(ABOUT_FILE, 'utf-8'));
+  }
+  saveAbout(DEFAULT_ABOUT);
+  return { ...DEFAULT_ABOUT };
+}
+
+function saveAbout(about) {
+  fs.writeFileSync(ABOUT_FILE, JSON.stringify(about, null, 2));
+}
+
+function deleteAboutImage(about) {
+  if (!about.image) return;
+  const filepath = path.join(ABOUT_UPLOAD_DIR, about.image.filename);
+  if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
+  about.image = null;
 }
 
 function loadData() {
+  const categories = loadCategories();
   if (fs.existsSync(DATA_FILE)) {
-    return JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8'));
+    const data = JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8'));
+    for (const cat of categories) {
+      if (!data[cat.slug]) data[cat.slug] = [];
+    }
+    return data;
   }
   const empty = {};
-  for (const cat of CATEGORIES) empty[cat] = [];
+  for (const cat of categories) empty[cat.slug] = [];
   return empty;
 }
 
@@ -28,6 +110,23 @@ function saveData(data) {
   fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
 }
 
+function deleteCategoryImages(slug) {
+  const data = loadData();
+  const images = data[slug] || [];
+
+  for (const img of images) {
+    const filepath = path.join(UPLOADS_DIR, slug, img.filename);
+    if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
+  }
+
+  delete data[slug];
+  saveData(data);
+
+  const dir = path.join(UPLOADS_DIR, slug);
+  if (fs.existsSync(dir)) fs.rmSync(dir, { recursive: true, force: true });
+}
+
+ensureUploadDirs();
 if (!fs.existsSync(DATA_FILE)) saveData(loadData());
 
 function getPassword() {
@@ -51,14 +150,32 @@ const storage = multer.diskStorage({
   }
 });
 
+function imageFileFilter(req, file, cb) {
+  const allowed = /jpeg|jpg|png|gif|webp/;
+  const ext = allowed.test(path.extname(file.originalname).toLowerCase());
+  const mime = allowed.test(file.mimetype.split('/')[1]);
+  cb(null, ext && mime);
+}
+
 const upload = multer({
   storage,
-  fileFilter: (req, file, cb) => {
-    const allowed = /jpeg|jpg|png|gif|webp/;
-    const ext = allowed.test(path.extname(file.originalname).toLowerCase());
-    const mime = allowed.test(file.mimetype.split('/')[1]);
-    cb(null, ext && mime);
+  fileFilter: imageFileFilter,
+  limits: { fileSize: 20 * 1024 * 1024 }
+});
+
+const aboutStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    fs.mkdirSync(ABOUT_UPLOAD_DIR, { recursive: true });
+    cb(null, ABOUT_UPLOAD_DIR);
   },
+  filename: (req, file, cb) => {
+    cb(null, uuidv4() + path.extname(file.originalname));
+  }
+});
+
+const aboutUpload = multer({
+  storage: aboutStorage,
+  fileFilter: imageFileFilter,
   limits: { fileSize: 20 * 1024 * 1024 }
 });
 
@@ -74,9 +191,61 @@ app.post('/api/auth', (req, res) => {
   res.status(401).json({ error: 'Wrong password' });
 });
 
+app.get('/api/categories', (req, res) => {
+  res.json(loadCategories());
+});
+
+app.post('/api/categories', authMiddleware, (req, res) => {
+  const { label } = req.body;
+  if (!label || !label.trim()) {
+    return res.status(400).json({ error: 'Gallery name is required' });
+  }
+
+  const categories = loadCategories();
+  if (categories.length >= MAX_CATEGORIES) {
+    return res.status(400).json({ error: `Maximum of ${MAX_CATEGORIES} galleries allowed` });
+  }
+
+  const trimmedLabel = label.trim();
+  const baseSlug = slugify(trimmedLabel);
+  const slug = uniqueSlug(baseSlug, categories.map(c => c.slug));
+
+  const entry = { slug, label: trimmedLabel };
+  categories.push(entry);
+  saveCategories(categories);
+
+  fs.mkdirSync(path.join(UPLOADS_DIR, slug), { recursive: true });
+
+  const data = loadData();
+  data[slug] = [];
+  saveData(data);
+
+  res.status(201).json(entry);
+});
+
+app.delete('/api/categories/:slug', authMiddleware, (req, res) => {
+  const { slug } = req.params;
+  const categories = loadCategories();
+
+  if (!categoryExists(slug)) {
+    return res.status(404).json({ error: 'Gallery not found' });
+  }
+
+  if (categories.length <= 1) {
+    return res.status(400).json({ error: 'At least one gallery must remain' });
+  }
+
+  deleteCategoryImages(slug);
+
+  const updated = categories.filter(c => c.slug !== slug);
+  saveCategories(updated);
+
+  res.json({ success: true });
+});
+
 app.get('/api/images/:category', (req, res) => {
   const { category } = req.params;
-  if (!CATEGORIES.includes(category)) {
+  if (!categoryExists(category)) {
     return res.status(400).json({ error: 'Invalid category' });
   }
   const data = loadData();
@@ -85,7 +254,7 @@ app.get('/api/images/:category', (req, res) => {
 
 app.post('/api/images/:category', authMiddleware, upload.array('images', 50), (req, res) => {
   const { category } = req.params;
-  if (!CATEGORIES.includes(category)) {
+  if (!categoryExists(category)) {
     return res.status(400).json({ error: 'Invalid category' });
   }
   if (!req.files || !req.files.length) {
@@ -120,7 +289,7 @@ app.post('/api/images/:category', authMiddleware, upload.array('images', 50), (r
 
 app.put('/api/images/:category/reorder', authMiddleware, (req, res) => {
   const { category } = req.params;
-  if (!CATEGORIES.includes(category)) {
+  if (!categoryExists(category)) {
     return res.status(400).json({ error: 'Invalid category' });
   }
 
@@ -143,7 +312,7 @@ app.put('/api/images/:category/reorder', authMiddleware, (req, res) => {
 
 app.put('/api/images/:category/:id', authMiddleware, (req, res) => {
   const { category, id } = req.params;
-  if (!CATEGORIES.includes(category)) {
+  if (!categoryExists(category)) {
     return res.status(400).json({ error: 'Invalid category' });
   }
 
@@ -162,7 +331,7 @@ app.put('/api/images/:category/:id', authMiddleware, (req, res) => {
 
 app.delete('/api/images/:category/:id', authMiddleware, (req, res) => {
   const { category, id } = req.params;
-  if (!CATEGORIES.includes(category)) {
+  if (!categoryExists(category)) {
     return res.status(400).json({ error: 'Invalid category' });
   }
 
@@ -177,6 +346,59 @@ app.delete('/api/images/:category/:id', authMiddleware, (req, res) => {
   if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
 
   res.json({ success: true });
+});
+
+app.get('/api/about', (req, res) => {
+  res.json(loadAbout());
+});
+
+app.put('/api/about', authMiddleware, (req, res) => {
+  const { description, contacts } = req.body;
+  const about = loadAbout();
+
+  if (description !== undefined) {
+    about.description = typeof description === 'string' ? description : '';
+  }
+
+  if (contacts !== undefined) {
+    if (!Array.isArray(contacts)) {
+      return res.status(400).json({ error: 'contacts must be an array' });
+    }
+    about.contacts = contacts
+      .filter(c => c && c.label && c.value)
+      .map(c => ({
+        label: String(c.label).trim(),
+        value: String(c.value).trim()
+      }))
+      .slice(0, 12);
+  }
+
+  saveAbout(about);
+  res.json(about);
+});
+
+app.post('/api/about/image', authMiddleware, aboutUpload.single('image'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No image uploaded' });
+  }
+
+  const about = loadAbout();
+  deleteAboutImage(about);
+
+  about.image = {
+    filename: req.file.filename,
+    url: `/uploads/about/${req.file.filename}`
+  };
+  saveAbout(about);
+
+  res.json(about);
+});
+
+app.delete('/api/about/image', authMiddleware, (req, res) => {
+  const about = loadAbout();
+  deleteAboutImage(about);
+  saveAbout(about);
+  res.json(about);
 });
 
 app.get('/admin', (req, res) => {

@@ -1,11 +1,8 @@
-const CATEGORY_LABELS = {
-  'black-and-white': 'Black and White',
-  'nature': 'Nature',
-  'abstract': 'Abstract'
-};
+const MAX_CATEGORIES = 6;
 
 let token = null;
-let currentCategory = 'black-and-white';
+let categories = [];
+let currentCategory = null;
 let pendingFiles = [];
 
 const loginScreen = document.getElementById('login-screen');
@@ -31,6 +28,41 @@ const progressWrap = document.getElementById('progress-wrap');
 const progressBar = document.getElementById('progress-bar');
 const adminGallery = document.getElementById('admin-gallery');
 const adminEmpty = document.getElementById('admin-empty');
+const adminTabs = document.getElementById('admin-tabs');
+const categoryForm = document.getElementById('category-form');
+const newCategoryName = document.getElementById('new-category-name');
+const addCategoryBtn = document.getElementById('add-category-btn');
+const categoryCount = document.getElementById('category-count');
+const categoryStatus = document.getElementById('category-status');
+const deleteCategoryBtn = document.getElementById('delete-category-btn');
+const galleryAdminView = document.getElementById('gallery-admin-view');
+const aboutEditorSection = document.getElementById('about-editor');
+const navGalleries = document.getElementById('nav-galleries');
+const navAbout = document.getElementById('nav-about');
+
+function showAdminSection(section) {
+  const isAbout = section === 'about';
+  galleryAdminView.hidden = isAbout;
+  aboutEditorSection.hidden = !isAbout;
+  navGalleries.classList.toggle('active', !isAbout);
+  navAbout.classList.toggle('active', isAbout);
+  if (isAbout) {
+    window.location.hash = 'about';
+  } else {
+    history.replaceState(null, '', window.location.pathname);
+  }
+}
+
+navGalleries.addEventListener('click', () => showAdminSection('galleries'));
+navAbout.addEventListener('click', () => showAdminSection('about'));
+
+window.addEventListener('hashchange', () => {
+  if (token) applyAdminSectionFromHash();
+});
+
+function applyAdminSectionFromHash() {
+  showAdminSection(window.location.hash === '#about' ? 'about' : 'galleries');
+}
 
 // ── Auth ──
 
@@ -54,7 +86,9 @@ loginForm.addEventListener('submit', async e => {
     token = data.token;
     loginScreen.style.display = 'none';
     adminPanel.style.display = 'block';
-    loadAdminGallery();
+    applyAdminSectionFromHash();
+    initCategories();
+    initAboutEditor();
   } catch {
     loginError.textContent = 'Connection error.';
   }
@@ -67,15 +101,120 @@ logoutBtn.addEventListener('click', () => {
   passwordInput.value = '';
 });
 
-// ── Category tabs ──
+// ── Categories ──
 
-document.querySelectorAll('.tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    tab.classList.add('active');
-    currentCategory = tab.dataset.category;
-    loadAdminGallery();
+function getCategoryLabel(slug) {
+  const cat = categories.find(c => c.slug === slug);
+  return cat ? cat.label : slug;
+}
+
+function updateCategoryControls() {
+  categoryCount.textContent = `${categories.length} of ${MAX_CATEGORIES} galleries`;
+  const atMax = categories.length >= MAX_CATEGORIES;
+  addCategoryBtn.disabled = atMax;
+  newCategoryName.disabled = atMax;
+  deleteCategoryBtn.disabled = categories.length <= 1;
+  deleteCategoryBtn.title = categories.length <= 1
+    ? 'At least one gallery must remain'
+    : 'Delete this gallery and all its photos';
+}
+
+function renderTabs() {
+  adminTabs.innerHTML = '';
+  categories.forEach(cat => {
+    const tab = document.createElement('button');
+    tab.className = 'tab' + (cat.slug === currentCategory ? ' active' : '');
+    tab.dataset.category = cat.slug;
+    tab.textContent = cat.label;
+    tab.addEventListener('click', () => {
+      currentCategory = cat.slug;
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      loadAdminGallery();
+    });
+    adminTabs.appendChild(tab);
   });
+}
+
+async function fetchCategories() {
+  const res = await fetch('/api/categories');
+  if (!res.ok) throw new Error('Failed to load galleries');
+  return res.json();
+}
+
+async function initCategories() {
+  try {
+    categories = await fetchCategories();
+    if (!currentCategory && categories.length) {
+      currentCategory = categories[0].slug;
+    }
+    renderTabs();
+    updateCategoryControls();
+    loadAdminGallery();
+  } catch {
+    categoryStatus.textContent = 'Failed to load galleries.';
+  }
+}
+
+categoryForm.addEventListener('submit', async e => {
+  e.preventDefault();
+  categoryStatus.textContent = '';
+
+  const label = newCategoryName.value.trim();
+  if (!label) return;
+
+  try {
+    const res = await fetch('/api/categories', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-token': token },
+      body: JSON.stringify({ label })
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      categoryStatus.textContent = data.error || 'Failed to add gallery.';
+      return;
+    }
+
+    categories.push(data);
+    currentCategory = data.slug;
+    newCategoryName.value = '';
+    categoryStatus.textContent = `Gallery "${data.label}" created.`;
+    renderTabs();
+    updateCategoryControls();
+    loadAdminGallery();
+  } catch {
+    categoryStatus.textContent = 'Failed to add gallery.';
+  }
+});
+
+deleteCategoryBtn.addEventListener('click', async () => {
+  const label = getCategoryLabel(currentCategory);
+  if (!confirm(`Delete "${label}" and all its photos permanently? This cannot be undone.`)) return;
+
+  categoryStatus.textContent = '';
+
+  try {
+    const res = await fetch(`/api/categories/${currentCategory}`, {
+      method: 'DELETE',
+      headers: { 'x-admin-token': token }
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      categoryStatus.textContent = data.error || 'Failed to delete gallery.';
+      return;
+    }
+
+    categories = await fetchCategories();
+    currentCategory = categories.length ? categories[0].slug : null;
+    categoryStatus.textContent = `Gallery "${label}" deleted.`;
+    renderTabs();
+    updateCategoryControls();
+    loadAdminGallery();
+  } catch {
+    categoryStatus.textContent = 'Failed to delete gallery.';
+  }
 });
 
 // ── Drop zone & file selection ──
@@ -257,6 +396,14 @@ let galleryImages = [];
 async function loadAdminGallery() {
   adminGallery.innerHTML = '';
   adminEmpty.style.display = 'none';
+
+  if (!currentCategory) {
+    adminEmpty.textContent = 'No galleries yet. Add one above.';
+    adminEmpty.style.display = 'block';
+    return;
+  }
+
+  adminEmpty.textContent = 'No photos in this category.';
 
   try {
     const res = await fetch(`/api/images/${currentCategory}`);
@@ -507,3 +654,165 @@ async function deleteImage(id) {
     alert('Failed to delete. Try again.');
   }
 }
+
+// ── About page editor ──
+
+let aboutContacts = [];
+
+const aboutPortraitPreview = document.getElementById('about-portrait-preview');
+const aboutImageInput = document.getElementById('about-image-input');
+const aboutImageUploadBtn = document.getElementById('about-image-upload-btn');
+const aboutImageRemoveBtn = document.getElementById('about-image-remove-btn');
+const aboutImageStatus = document.getElementById('about-image-status');
+const aboutDescriptionInput = document.getElementById('about-description-input');
+const contactEntries = document.getElementById('contact-entries');
+const addContactBtn = document.getElementById('add-contact-btn');
+const aboutSaveBtn = document.getElementById('about-save-btn');
+const aboutSaveStatus = document.getElementById('about-save-status');
+
+function renderAboutPortraitPreview(image) {
+  aboutPortraitPreview.innerHTML = '';
+  if (image && image.url) {
+    const img = document.createElement('img');
+    img.src = image.url;
+    img.alt = 'About portrait preview';
+    img.className = 'about-portrait-img';
+    aboutPortraitPreview.appendChild(img);
+    aboutImageRemoveBtn.style.display = '';
+  } else {
+    const placeholder = document.createElement('div');
+    placeholder.className = 'portrait-placeholder';
+    aboutPortraitPreview.appendChild(placeholder);
+    aboutImageRemoveBtn.style.display = 'none';
+  }
+}
+
+function renderContactEntries() {
+  contactEntries.innerHTML = '';
+
+  aboutContacts.forEach((contact, i) => {
+    const row = document.createElement('div');
+    row.className = 'contact-entry';
+
+    const labelInput = document.createElement('input');
+    labelInput.className = 'text-input contact-label';
+    labelInput.placeholder = 'Label (e.g. Email)';
+    labelInput.value = contact.label;
+    labelInput.addEventListener('input', () => { aboutContacts[i].label = labelInput.value; });
+
+    const valueInput = document.createElement('input');
+    valueInput.className = 'text-input contact-value';
+    valueInput.placeholder = 'Value (e.g. hello@email.com)';
+    valueInput.value = contact.value;
+    valueInput.addEventListener('input', () => { aboutContacts[i].value = valueInput.value; });
+
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'file-entry-remove';
+    removeBtn.innerHTML = '&times;';
+    removeBtn.addEventListener('click', () => {
+      aboutContacts.splice(i, 1);
+      renderContactEntries();
+    });
+
+    row.appendChild(labelInput);
+    row.appendChild(valueInput);
+    row.appendChild(removeBtn);
+    contactEntries.appendChild(row);
+  });
+}
+
+async function initAboutEditor() {
+  try {
+    const res = await fetch('/api/about');
+    const data = await res.json();
+    aboutDescriptionInput.value = data.description || '';
+    aboutContacts = (data.contacts || []).map(c => ({ ...c }));
+    if (!aboutContacts.length) aboutContacts.push({ label: '', value: '' });
+    renderContactEntries();
+    renderAboutPortraitPreview(data.image);
+  } catch {
+    aboutSaveStatus.textContent = 'Failed to load about page content.';
+  }
+}
+
+aboutImageUploadBtn.addEventListener('click', () => aboutImageInput.click());
+
+aboutImageInput.addEventListener('change', async () => {
+  const file = aboutImageInput.files[0];
+  aboutImageInput.value = '';
+  if (!file) return;
+
+  aboutImageStatus.textContent = 'Uploading…';
+  const formData = new FormData();
+  formData.append('image', file);
+
+  try {
+    const res = await fetch('/api/about/image', {
+      method: 'POST',
+      headers: { 'x-admin-token': token },
+      body: formData
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      aboutImageStatus.textContent = data.error || 'Upload failed.';
+      return;
+    }
+    renderAboutPortraitPreview(data.image);
+    aboutImageStatus.textContent = 'Image uploaded.';
+  } catch {
+    aboutImageStatus.textContent = 'Upload failed.';
+  }
+});
+
+aboutImageRemoveBtn.addEventListener('click', async () => {
+  if (!confirm('Remove the portrait image?')) return;
+  aboutImageStatus.textContent = '';
+
+  try {
+    const res = await fetch('/api/about/image', {
+      method: 'DELETE',
+      headers: { 'x-admin-token': token }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error('Remove failed');
+    renderAboutPortraitPreview(data.image);
+    aboutImageStatus.textContent = 'Image removed.';
+  } catch {
+    aboutImageStatus.textContent = 'Failed to remove image.';
+  }
+});
+
+addContactBtn.addEventListener('click', () => {
+  aboutContacts.push({ label: '', value: '' });
+  renderContactEntries();
+});
+
+aboutSaveBtn.addEventListener('click', async () => {
+  aboutSaveStatus.textContent = 'Saving…';
+
+  const contacts = aboutContacts
+    .map(c => ({ label: c.label.trim(), value: c.value.trim() }))
+    .filter(c => c.label && c.value);
+
+  try {
+    const res = await fetch('/api/about', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'x-admin-token': token },
+      body: JSON.stringify({
+        description: aboutDescriptionInput.value,
+        contacts
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      aboutSaveStatus.textContent = data.error || 'Save failed.';
+      return;
+    }
+    aboutContacts = data.contacts.length ? data.contacts.map(c => ({ ...c })) : [{ label: '', value: '' }];
+    renderContactEntries();
+    aboutSaveStatus.textContent = 'About page saved.';
+  } catch {
+    aboutSaveStatus.textContent = 'Save failed.';
+  }
+});
