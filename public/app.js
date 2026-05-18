@@ -1,13 +1,7 @@
-const CATEGORY_LABELS = {
-  'black-and-white': 'Black and White',
-  'nature': 'Nature',
-  'abstract': 'Abstract'
-};
-
-let currentCategory = 'black-and-white';
+let categories = [];
+let currentCategory = null;
 
 const gallery = document.getElementById('gallery');
-const title = document.getElementById('category-title');
 const emptyMsg = document.getElementById('empty-msg');
 const lightbox = document.getElementById('lightbox');
 const lightboxImg = document.getElementById('lightbox-img');
@@ -16,11 +10,27 @@ const lightboxClose = document.getElementById('lightbox-close');
 const hamburger = document.getElementById('hamburger');
 const nav = document.getElementById('nav');
 
+function renderNav() {
+  const aboutLink = nav.querySelector('[data-nav="about"]');
+  nav.querySelectorAll('.nav-link[data-category]').forEach(el => el.remove());
+
+  categories.forEach(cat => {
+    const btn = document.createElement('button');
+    btn.className = 'nav-link';
+    btn.dataset.category = cat.slug;
+    btn.textContent = cat.label;
+    btn.addEventListener('click', () => {
+      loadGallery(cat.slug);
+      nav.classList.remove('open');
+    });
+    nav.insertBefore(btn, aboutLink);
+  });
+}
+
 async function loadGallery(category) {
   currentCategory = category;
-  title.textContent = CATEGORY_LABELS[category];
 
-  document.querySelectorAll('.nav-link').forEach(btn => {
+  document.querySelectorAll('.nav-link[data-category]').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.category === category);
   });
 
@@ -95,15 +105,24 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') closeLightbox();
 });
 
-document.querySelectorAll('.nav-link').forEach(btn => {
-  btn.addEventListener('click', () => {
-    loadGallery(btn.dataset.category);
-    nav.classList.remove('open');
-  });
-});
-
 hamburger.addEventListener('click', () => {
   nav.classList.toggle('open');
 });
 
-loadGallery('black-and-white');
+async function init() {
+  try {
+    const res = await fetch('/api/categories');
+    categories = await res.json();
+    renderNav();
+
+    if (categories.length) {
+      await loadGallery(categories[0].slug);
+    } else {
+      emptyMsg.style.display = 'block';
+    }
+  } catch (err) {
+    console.error('Failed to load categories:', err);
+  }
+}
+
+init();
